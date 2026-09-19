@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Bookmark Manager</title>
+    <style>
+      /* Chrome sizes the popup window once at initial paint and never resizes it as
+         content loads async (tags, suggestions, folders), so this must be a fixed
+         height set from the very first render -- max-height alone collapses to
+         whatever's rendered at that first paint and never grows to fit the rest. */
+      html, body { width: 480px; height: 600px; margin: 0; overflow-y: auto; }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/popup/main.tsx"></script>
+  </body>
+</html>
