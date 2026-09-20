@@ -14,12 +14,23 @@ export function Popup() {
   const [tab, setTab] = useState<Tab>('add')
 
   useEffect(() => {
+    function consumeFlag() {
+      setTab('search')
+      chrome.storage.session.remove(SESSION_KEY_OPEN_ON_SEARCH)
+    }
+
     chrome.storage.session.get(SESSION_KEY_OPEN_ON_SEARCH).then((result) => {
-      if (result[SESSION_KEY_OPEN_ON_SEARCH]) {
-        setTab('search')
-        chrome.storage.session.remove(SESSION_KEY_OPEN_ON_SEARCH)
-      }
+      if (result[SESSION_KEY_OPEN_ON_SEARCH]) consumeFlag()
     })
+
+    // The background script writes this flag without awaiting it (to preserve the user
+    // gesture for openPopup()), so it can still be in flight when the get() above resolves.
+    // Watch for it landing late instead of racing it.
+    function handleStorageChange(changes: Record<string, chrome.storage.StorageChange>, area: string) {
+      if (area === 'session' && changes[SESSION_KEY_OPEN_ON_SEARCH]?.newValue) consumeFlag()
+    }
+    chrome.storage.onChanged.addListener(handleStorageChange)
+    return () => chrome.storage.onChanged.removeListener(handleStorageChange)
   }, [])
 
   function handleValueChange(value: string) {
