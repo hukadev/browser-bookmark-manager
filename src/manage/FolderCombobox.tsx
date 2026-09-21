@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import { Popover } from 'radix-ui'
-import { Button } from '../components/Button'
 import type { FolderOption } from '../lib/bookmarks'
 import { inputClass, selectTriggerClass } from '../lib/ui-classes'
 
@@ -32,8 +31,8 @@ export function FolderCombobox({ folders, value, onValueChange }: FolderCombobox
       }}
     >
       <Popover.Trigger asChild>
-        <button type="button" className={selectTriggerClass}>
-          {selected ? '  '.repeat(selected.depth) + selected.title : 'Select a folder'}
+        <button type="button" className={`${selectTriggerClass} font-mono`}>
+          {selected ? selected.linePrefix + selected.title : 'Select a folder'}
         </button>
       </Popover.Trigger>
       <Popover.Portal>
@@ -48,18 +47,16 @@ export function FolderCombobox({ folders, value, onValueChange }: FolderCombobox
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
           />
-          <ul className="max-h-64 overflow-y-auto flex flex-col gap-0.5">
+          <ul className="max-h-64 overflow-y-auto flex flex-col gap-0.5 font-mono">
             {filtered.map((folder) => (
               <li key={folder.id}>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  active={folder.id === value}
-                  className="justify-start w-full"
+                <button
+                  type="button"
+                  className={`block w-full text-left rounded-md px-1 py-0.5 text-xs transition-colors cursor-pointer hover:bg-base-200 ${folder.id === value ? 'bg-base-200' : ''}`}
                   onClick={() => select(folder.id)}
                 >
-                  {'  '.repeat(folder.depth) + folder.title}
-                </Button>
+                  {folder.linePrefix + folder.title}
+                </button>
               </li>
             ))}
             {filtered.length === 0 && <li className="text-sm opacity-60 px-2 py-1">No folders match</li>}

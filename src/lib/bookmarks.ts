@@ -51,19 +51,26 @@ export interface FolderOption {
   id: string
   title: string
   depth: number
+  /** Box-drawing tree connector (├─/└─/│) to prefix the title with, empty at depth 0. */
+  linePrefix: string
 }
 
-/** Every folder in the tree, in display order, indented by nesting depth. */
+/** Every folder in the tree, in display order, with a tree-connector prefix per nesting depth. */
 export function listFolders(nodes: BookmarkNode[]): FolderOption[] {
   const folders: FolderOption[] = []
 
-  function visit(node: BookmarkNode, depth: number) {
+  function visit(node: BookmarkNode, depth: number, ancestorsLast: boolean[], isLast: boolean) {
     if (node.url !== undefined) return
-    folders.push({ id: node.id, title: node.title, depth })
-    for (const child of node.children ?? []) visit(child, depth + 1)
+    const linePrefix =
+      depth === 0 ? '' : ancestorsLast.map((last) => (last ? '   ' : '│  ')).join('') + (isLast ? '└─ ' : '├─ ')
+    folders.push({ id: node.id, title: node.title, depth, linePrefix })
+
+    const children = (node.children ?? []).filter((child) => child.url === undefined)
+    const nextAncestorsLast = depth === 0 ? ancestorsLast : [...ancestorsLast, isLast]
+    children.forEach((child, i) => visit(child, depth + 1, nextAncestorsLast, i === children.length - 1))
   }
 
-  for (const node of nodes) visit(node, 0)
+  nodes.forEach((node, i) => visit(node, 0, [], i === nodes.length - 1))
   return folders
 }
 

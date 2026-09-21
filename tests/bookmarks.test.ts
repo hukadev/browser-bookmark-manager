@@ -49,10 +49,10 @@ describe('bookmarks.ts tree helpers', () => {
     expect(folderPath(tree, '1')).toEqual([{ id: '1', title: 'Bookmarks Bar' }])
   })
 
-  it('lists every folder, indented by nesting depth, skipping bookmarks', () => {
+  it('lists every folder with a tree-connector prefix per nesting depth, skipping bookmarks', () => {
     expect(listFolders(tree)).toEqual([
-      { id: '1', title: 'Bookmarks Bar', depth: 0 },
-      { id: '2', title: 'Pull Requests', depth: 1 },
+      { id: '1', title: 'Bookmarks Bar', depth: 0, linePrefix: '' },
+      { id: '2', title: 'Pull Requests', depth: 1, linePrefix: '└─ ' },
     ])
   })
 

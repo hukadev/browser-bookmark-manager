@@ -327,14 +327,14 @@ export function AddBookmarkTab() {
         >
           <ComboBoxInput className={`${inputClass} w-full`} />
           <Popover className="w-(--trigger-width) bg-base-100 text-base-content border border-base-300 rounded-lg shadow-lg p-1 z-50">
-            <ListBox className="max-h-56 overflow-auto outline-none">
+            <ListBox className="max-h-56 overflow-auto outline-none font-mono">
               {(folder: FolderOption) => (
                 <ListBoxItem
                   id={folder.id}
                   textValue={folder.title}
-                  className="rounded-md px-3 py-2 outline-none cursor-pointer data-[focused]:bg-base-200"
+                  className="rounded-md px-1 py-0.5 outline-none cursor-pointer data-[focused]:bg-base-200"
                 >
-                  {'  '.repeat(folder.depth) + folder.title}
+                  {folder.linePrefix + folder.title}
                 </ListBoxItem>
               )}
             </ListBox>
