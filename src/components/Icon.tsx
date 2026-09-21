@@ -2,3 +2,5 @@ export { default as SearchIcon } from '@material-symbols/svg-400/outlined/search
 export { default as FolderIcon } from '@material-symbols/svg-400/outlined/folder.svg?react'
 export { default as BookmarkIcon } from '@material-symbols/svg-400/outlined/bookmark.svg?react'
 export { default as TabCloseIcon } from '@material-symbols/svg-400/outlined/tab_close.svg?react'
+export { default as ViewListIcon } from '@material-symbols/svg-400/outlined/view_list.svg?react'
+export { default as GridViewIcon } from '@material-symbols/svg-400/outlined/grid_view.svg?react'

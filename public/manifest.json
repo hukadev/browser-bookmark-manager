@@ -4,6 +4,7 @@
   "version": "0.1.0",
   "description": "Tags, notes, folders, search, duplicates, and automation on top of Chrome's native bookmarks.",
   "permissions": ["bookmarks", "storage", "activeTab", "tabs", "favicon"],
+  "host_permissions": ["<all_urls>"],
   "web_accessible_resources": [
     {
       "resources": ["_favicon/*"],

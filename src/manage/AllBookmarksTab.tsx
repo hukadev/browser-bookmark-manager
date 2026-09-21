@@ -3,7 +3,7 @@ import { Checkbox } from 'radix-ui'
 import { Button as AriaRemoveButton, Tag as AriaTag, TagGroup, TagList } from 'react-aria-components'
 import { Button } from '../components/Button'
 import { Chip } from '../components/Chip'
-import { BookmarkIcon, FolderIcon, SearchIcon } from '../components/Icon'
+import { BookmarkIcon, FolderIcon, GridViewIcon, SearchIcon, ViewListIcon } from '../components/Icon'
 import { countFolders, countTags } from '../lib/aggregate'
 import {
   createFolder,
@@ -20,6 +20,7 @@ import {
   type FolderCrumb,
   type FolderOption,
 } from '../lib/bookmarks'
+import { getOgImage } from '../lib/og-image'
 import { search } from '../lib/search'
 import { tagBgTintClass, tagBorderColorClass, tagTextColorClass } from '../lib/tag-color'
 import { decodeTitle, encodeTitle } from '../lib/title-codec'
@@ -214,6 +215,119 @@ function EditRow({
   )
 }
 
+function BookmarkCard({
+  row,
+  selected,
+  archiveDisabled,
+  onToggleSelected,
+  onEdit,
+  onArchive,
+  onDelete,
+  onFolderClick,
+}: {
+  row: Row
+  selected: boolean
+  archiveDisabled: boolean
+  onToggleSelected: () => void
+  onEdit: () => void
+  onArchive: () => void
+  onDelete: () => void
+  onFolderClick: (id: string) => void
+}) {
+  const [ogImage, setOgImage] = useState<string | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+    setOgImage(null)
+    if (row.url) {
+      getOgImage(row.url).then((image) => {
+        if (!cancelled) setOgImage(image)
+      })
+    }
+    return () => {
+      cancelled = true
+    }
+  }, [row.url])
+
+  return (
+    <li className="group flex flex-col rounded-lg bg-base-200 overflow-hidden min-w-0">
+      <div className="relative aspect-[1200/630] bg-base-300 flex items-center justify-center">
+        {ogImage ? (
+          <img src={ogImage} alt="" className="w-full h-full object-cover" />
+        ) : row.url ? (
+          <img src={faviconUrl(row.url, 48)} alt="" className="w-10 h-10 opacity-60" />
+        ) : (
+          <BookmarkIcon className="w-10 h-10 opacity-30 fill-current" />
+        )}
+        <Checkbox.Root
+          checked={selected}
+          onCheckedChange={onToggleSelected}
+          className={`${checkboxClass} absolute top-2 left-2 flex items-center justify-center bg-base-100 shrink-0`}
+        >
+          <Checkbox.Indicator className="text-primary-content text-xs leading-none">✓</Checkbox.Indicator>
+        </Checkbox.Root>
+      </div>
+      <div className="flex flex-col gap-1.5 py-3 px-3 min-w-0">
+        <div className="flex items-center gap-2 min-w-0">
+          {row.url ? (
+            <img src={faviconUrl(row.url)} alt="" className="w-4 h-4 shrink-0 rounded-sm" />
+          ) : (
+            <BookmarkIcon className="w-4 h-4 opacity-40 shrink-0 fill-current" />
+          )}
+          <span className="font-semibold truncate">{row.title}</span>
+        </div>
+        <a
+          href={row.url}
+          target="_blank"
+          rel="noreferrer"
+          className="block w-full text-sm text-primary hover:underline truncate pl-[1.5rem]"
+        >
+          {row.url}
+        </a>
+        {row.tags.length > 0 && (
+          <div className="flex flex-wrap gap-1 pl-[1.5rem]">
+            {row.tags.map((tag) => (
+              <Chip key={tag} tag={tag} />
+            ))}
+          </div>
+        )}
+        {row.breadcrumb.length > 0 && (
+          <div className="flex items-center gap-1 pl-[1.5rem] text-xs flex-wrap">
+            <FolderIcon className="w-3 h-3 shrink-0 fill-current" />
+            {row.breadcrumb.map((crumb, i) => (
+              <span key={crumb.id} className="flex items-center gap-1">
+                {i > 0 && <span className="opacity-50">/</span>}
+                <button type="button" className="hover:underline hover:text-primary" onClick={() => onFolderClick(crumb.id)}>
+                  {crumb.title}
+                </button>
+              </span>
+            ))}
+          </div>
+        )}
+        <div className="flex items-center gap-1 pl-[1.5rem] opacity-0 group-hover:opacity-100 transition-opacity">
+          <Button size="xs" variant="outline" onClick={onEdit}>
+            Edit
+          </Button>
+          <Button size="xs" variant="outline" disabled={archiveDisabled} onClick={onArchive}>
+            Archive
+          </Button>
+          <ConfirmDialog
+            trigger={
+              <Button size="xs" variant="error">
+                Delete
+              </Button>
+            }
+            title="Delete this bookmark?"
+            description="This permanently deletes the bookmark."
+            confirmLabel="Confirm?"
+            onConfirm={onDelete}
+          />
+        </div>
+      </div>
+    </li>
+  )
+}
+
 function parseTagInput(raw: string): string[] {
   return [...new Set(raw.split(',').map((t) => t.trim()).filter(Boolean))]
 }
@@ -234,6 +348,7 @@ export function AllBookmarksTab() {
   const [bulkMoveFolderId, setBulkMoveFolderId] = useState('')
   const [bulkTagInput, setBulkTagInput] = useState('')
   const [tagsExpanded, setTagsExpanded] = useState(false)
+  const [view, setView] = useState<'list' | 'grid'>('list')
 
   function reload() {
     getTree().then((loadedTree) => {
@@ -535,7 +650,17 @@ export function AllBookmarksTab() {
             ))}
           </div>
         )}
-        <p className="text-sm opacity-70">{visibleRows.length} bookmarks</p>
+        <div className="flex items-center justify-between gap-3">
+          <p className="text-sm opacity-70">{visibleRows.length} bookmarks</p>
+          <div className="flex items-center gap-1">
+            <Button size="xs" square active={view === 'list'} aria-label="List view" onClick={() => setView('list')}>
+              <ViewListIcon className="w-4 h-4 fill-current" />
+            </Button>
+            <Button size="xs" square active={view === 'grid'} aria-label="Grid view" onClick={() => setView('grid')}>
+              <GridViewIcon className="w-4 h-4 fill-current" />
+            </Button>
+          </div>
+        </div>
         <div className="flex items-center gap-3 flex-wrap">
           <LabeledCheckbox
             checked={visibleRows.length > 0 && visibleRows.every((row) => selectedIds.includes(row.id))}
@@ -595,7 +720,13 @@ export function AllBookmarksTab() {
             </div>
           </div>
         )}
-        <ul className="flex flex-col gap-2">
+        <ul
+          className={
+            view === 'grid'
+              ? 'grid grid-cols-[repeat(auto-fill,minmax(240px,1fr))] gap-3'
+              : 'flex flex-col gap-2'
+          }
+        >
           {visibleRows.map((row) =>
             editingId === row.id ? (
               <EditRow
@@ -604,6 +735,18 @@ export function AllBookmarksTab() {
                 folders={folders}
                 onCancel={() => setEditingId(null)}
                 onSave={(changes) => handleSaveEdit(row.id, changes)}
+              />
+            ) : view === 'grid' ? (
+              <BookmarkCard
+                key={row.id}
+                row={row}
+                selected={selectedIds.includes(row.id)}
+                archiveDisabled={!archiveFolderId}
+                onToggleSelected={() => toggleSelected(row.id)}
+                onEdit={() => setEditingId(row.id)}
+                onArchive={() => handleArchiveOne(row.id)}
+                onDelete={() => handleDeleteOne(row.id)}
+                onFolderClick={toggleFolder}
               />
             ) : (
               <li key={row.id} className="group flex flex-col gap-1.5 py-3 px-3 rounded-lg bg-base-200 min-w-0">
