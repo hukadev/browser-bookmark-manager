@@ -1,6 +1,15 @@
 import { useEffect, useRef, useState } from 'react'
-import { Select } from 'radix-ui'
-import { Button as AriaRemoveButton, Tag as AriaTag, TagGroup, TagList } from 'react-aria-components'
+import {
+  Button as AriaRemoveButton,
+  ComboBox,
+  Input as ComboBoxInput,
+  ListBox,
+  ListBoxItem,
+  Popover,
+  Tag as AriaTag,
+  TagGroup,
+  TagList,
+} from 'react-aria-components'
 import {
   createBookmark,
   findByUrl,
@@ -15,7 +24,7 @@ import { countTags } from '../lib/aggregate'
 import { updateBadgeForTab } from '../lib/badge'
 import { suggestTags, type TagSuggestion } from '../lib/tag-suggest'
 import { tagBgTintClass, tagBorderColorClass, tagColorClass, tagTextColorClass } from '../lib/tag-color'
-import { formFieldClass, inputClass, labelClass, selectTriggerClass, textareaClass } from '../lib/ui-classes'
+import { formFieldClass, inputClass, labelClass, textareaClass } from '../lib/ui-classes'
 import { decodeTitle, encodeTitle } from '../lib/title-codec'
 import { Button } from '../components/Button'
 import { Chip } from '../components/Chip'
@@ -38,6 +47,7 @@ export function AddBookmarkTab() {
   const [note, setNote] = useState('')
   const [folders, setFolders] = useState<FolderOption[]>([])
   const [folderId, setFolderId] = useState('')
+  const [folderInputValue, setFolderInputValue] = useState('')
   const [existingId, setExistingId] = useState<string | null>(null)
   const [existing, setExisting] = useState<{ url: string; tags: string[]; title: string }[]>([])
   const [suggestions, setSuggestions] = useState<TagSuggestion[]>([])
@@ -89,11 +99,16 @@ export function AddBookmarkTab() {
           setTitle(decoded.title)
           setTags(decoded.tags)
           setNote(decoded.note ?? '')
-          setFolderId(match.parentId ?? options[0]?.id ?? '')
+          const matchFolderId = match.parentId ?? options[0]?.id ?? ''
+          setFolderId(matchFolderId)
+          setFolderInputValue(options.find((f) => f.id === matchFolderId)?.title ?? '')
         } else {
           setUrl(activeUrl)
           setTitle(activeTab?.title ?? '')
-          if (options.length > 0) setFolderId(options[0].id)
+          if (options.length > 0) {
+            setFolderId(options[0].id)
+            setFolderInputValue(options[0].title)
+          }
         }
       },
     )
@@ -164,7 +179,18 @@ export function AddBookmarkTab() {
 
   function handleFolderChange(nextFolderId: string) {
     setFolderId(nextFolderId)
-    if (existingId !== null) moveBookmark(existingId, nextFolderId).then(refreshBadge).catch(handleStaleBookmark)
+    if (existingId !== null) {
+      moveBookmark(existingId, nextFolderId).then(refreshBadge).catch(handleStaleBookmark)
+    } else {
+      createBookmark({
+        parentId: nextFolderId,
+        title: encodeTitle({ title, tags, note: note.trim() || undefined }),
+        url,
+      }).then((created) => {
+        setExistingId(created.id)
+        refreshBadge()
+      })
+    }
   }
 
   async function handleSave() {
@@ -283,26 +309,37 @@ export function AddBookmarkTab() {
       </div>
       <label className={formFieldClass}>
         <span className={labelClass}>Folder</span>
-        <Select.Root value={folderId} onValueChange={handleFolderChange}>
-          <Select.Trigger className={`${selectTriggerClass} w-full justify-start text-left`}>
-            <Select.Value />
-          </Select.Trigger>
-          <Select.Portal>
-            <Select.Content className="bg-base-100 text-base-content border border-base-300 rounded-lg shadow-lg p-1 z-50">
-              <Select.Viewport>
-                {folders.map((folder) => (
-                  <Select.Item
-                    key={folder.id}
-                    value={folder.id}
-                    className="rounded-md px-3 py-2 outline-none cursor-pointer data-[highlighted]:bg-base-200"
-                  >
-                    <Select.ItemText>{'  '.repeat(folder.depth) + folder.title}</Select.ItemText>
-                  </Select.Item>
-                ))}
-              </Select.Viewport>
-            </Select.Content>
-          </Select.Portal>
-        </Select.Root>
+        <ComboBox
+          aria-label="Folder"
+          menuTrigger="focus"
+          defaultItems={folders}
+          selectedKey={folderId}
+          inputValue={folderInputValue}
+          onInputChange={setFolderInputValue}
+          onFocus={() => setFolderInputValue('')}
+          onBlur={() => setFolderInputValue(folders.find((f) => f.id === folderId)?.title ?? '')}
+          onSelectionChange={(key) => {
+            if (key === null) return
+            const nextFolderId = String(key)
+            handleFolderChange(nextFolderId)
+            setFolderInputValue(folders.find((f) => f.id === nextFolderId)?.title ?? '')
+          }}
+        >
+          <ComboBoxInput className={`${inputClass} w-full`} />
+          <Popover className="w-(--trigger-width) bg-base-100 text-base-content border border-base-300 rounded-lg shadow-lg p-1 z-50">
+            <ListBox className="max-h-56 overflow-auto outline-none">
+              {(folder: FolderOption) => (
+                <ListBoxItem
+                  id={folder.id}
+                  textValue={folder.title}
+                  className="rounded-md px-3 py-2 outline-none cursor-pointer data-[focused]:bg-base-200"
+                >
+                  {'  '.repeat(folder.depth) + folder.title}
+                </ListBoxItem>
+              )}
+            </ListBox>
+          </Popover>
+        </ComboBox>
       </label>
       {existingId === null ? (
         <Button variant="primary" onClick={handleSave}>
