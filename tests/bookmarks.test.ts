@@ -6,6 +6,7 @@ import {
   findNodeById,
   flattenBookmarks,
   folderPath,
+  getBookmark,
   listFolders,
   removeBookmark,
   updateBookmark,
@@ -106,6 +107,15 @@ describe('bookmarks.ts chrome.bookmarks wrappers', () => {
     await updateBookmark('5', { title: '[work] X', url: 'https://example.com' })
 
     expect(update).toHaveBeenCalledWith('5', { title: '[work] X', url: 'https://example.com' })
+    vi.unstubAllGlobals()
+  })
+
+  it('delegates getBookmark to chrome.bookmarks.get and unwraps the single-element array', async () => {
+    const get = vi.fn().mockResolvedValue([{ id: '5', title: 'X' }])
+    vi.stubGlobal('chrome', { bookmarks: { get } })
+
+    expect(await getBookmark('5')).toEqual({ id: '5', title: 'X' })
+    expect(get).toHaveBeenCalledWith('5')
     vi.unstubAllGlobals()
   })
 })

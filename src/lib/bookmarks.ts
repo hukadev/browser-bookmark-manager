@@ -118,6 +118,10 @@ export function getTree(): Promise<BookmarkNode[]> {
   return chrome.bookmarks.getTree()
 }
 
+export function getBookmark(id: string): Promise<BookmarkNode | undefined> {
+  return chrome.bookmarks.get(id).then(([node]) => node)
+}
+
 export function createBookmark(details: chrome.bookmarks.BookmarkCreateArg): Promise<BookmarkNode> {
   return chrome.bookmarks.create(details)
 }

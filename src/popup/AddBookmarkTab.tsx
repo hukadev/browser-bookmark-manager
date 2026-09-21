@@ -20,6 +20,7 @@ import {
   updateBookmark,
   type FolderOption,
 } from '../lib/bookmarks'
+import { applyRulesToBookmark } from '../lib/automation'
 import { countTags } from '../lib/aggregate'
 import { updateBadgeForTab } from '../lib/badge'
 import { suggestTags, type TagSuggestion } from '../lib/tag-suggest'
@@ -63,6 +64,21 @@ export function AddBookmarkTab() {
   function refreshBadge() {
     const tab = activeTabRef.current
     if (tab) updateBadgeForTab(tab.id, tab.url)
+  }
+
+  // Runs auto-tag/folder rules against a bookmark just created here, then syncs the
+  // form's own state to match so the debounced autosave below doesn't clobber them.
+  function finishCreate(created: chrome.bookmarks.BookmarkTreeNode) {
+    setExistingId(created.id)
+    refreshBadge()
+    applyRulesToBookmark(created.id)
+      .then((result) => {
+        if (!result) return
+        setTags(result.tags)
+        setFolderId(result.folderId)
+        setFolderInputValue(folders.find((f) => f.id === result.folderId)?.title ?? '')
+      })
+      .catch(() => {})
   }
 
   // The bookmark this popup is bound to can disappear out from under it (removed via
@@ -143,10 +159,7 @@ export function AddBookmarkTab() {
     if (existingId !== null) {
       updateBookmark(existingId, { title: nextTitle }).then(refreshBadge).catch(handleStaleBookmark)
     } else {
-      createBookmark({ parentId: folderId, title: nextTitle, url }).then((created) => {
-        setExistingId(created.id)
-        refreshBadge()
-      })
+      createBookmark({ parentId: folderId, title: nextTitle, url }).then(finishCreate)
     }
   }
 
@@ -186,10 +199,7 @@ export function AddBookmarkTab() {
         parentId: nextFolderId,
         title: encodeTitle({ title, tags, note: note.trim() || undefined }),
         url,
-      }).then((created) => {
-        setExistingId(created.id)
-        refreshBadge()
-      })
+      }).then(finishCreate)
     }
   }
 
@@ -199,8 +209,7 @@ export function AddBookmarkTab() {
       title: encodeTitle({ title, tags, note: note.trim() || undefined }),
       url,
     })
-    setExistingId(created.id)
-    refreshBadge()
+    finishCreate(created)
   }
 
   return (

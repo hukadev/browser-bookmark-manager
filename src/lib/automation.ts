@@ -1,4 +1,6 @@
 import { LOCAL_KEY_AUTO_TAG_RULES, LOCAL_KEY_FOLDER_RULES } from '../shared/constants'
+import { getBookmark, moveBookmark, updateTitle } from './bookmarks'
+import { decodeTitle, encodeTitle } from './title-codec'
 
 export interface AutoTagRule {
   id: string
@@ -104,4 +106,27 @@ export function resolveFolderMoves(
     }
   }
   return moves
+}
+
+/** Runs auto-tag then folder rules against one freshly created bookmark. Returns its resulting tags/folder, or null if it no longer exists. */
+export async function applyRulesToBookmark(id: string): Promise<{ tags: string[]; folderId: string } | null> {
+  const [autoTagRules, folderRules, node] = await Promise.all([getAutoTagRules(), getFolderRules(), getBookmark(id)])
+  if (!node?.url) return null
+
+  const decoded = decodeTitle(node.title)
+  const [tagged] = applyAutoTagRules([{ url: node.url, title: decoded.title, tags: decoded.tags }], autoTagRules)
+  const tagsChanged =
+    tagged.tags.length !== decoded.tags.length || !tagged.tags.every((tag) => decoded.tags.includes(tag))
+  if (tagsChanged) {
+    await updateTitle(id, encodeTitle({ ...decoded, tags: tagged.tags }))
+  }
+
+  const currentFolderId = node.parentId ?? ''
+  const moves = resolveFolderMoves([{ id, tags: tagged.tags, folderId: currentFolderId }], folderRules)
+  const folderId = moves[0]?.folderId ?? currentFolderId
+  if (moves.length > 0) {
+    await moveBookmark(id, folderId)
+  }
+
+  return { tags: tagged.tags, folderId }
 }

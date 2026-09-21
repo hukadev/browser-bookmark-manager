@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   applyAutoTagRules,
+  applyRulesToBookmark,
   getAutoTagRules,
   getFolderRules,
   matchesAutoTagRule,
@@ -113,6 +114,67 @@ describe('resolveFolderMoves', () => {
     const bookmarks = [{ id: '1', tags: ['other'], folderId: 'inbox' }]
     const rules: FolderRule[] = [{ id: 'r1', when: 'any-tag-matches', tags: ['work'], folderId: 'work-folder' }]
     expect(resolveFolderMoves(bookmarks, rules)).toEqual([])
+  })
+})
+
+describe('applyRulesToBookmark', () => {
+  function stubChrome(opts: {
+    autoTagRules?: AutoTagRule[]
+    folderRules?: FolderRule[]
+    node?: { id: string; title: string; url?: string; parentId?: string }
+    update?: ReturnType<typeof vi.fn>
+    move?: ReturnType<typeof vi.fn>
+  }) {
+    vi.stubGlobal('chrome', {
+      storage: {
+        local: {
+          get: vi.fn().mockImplementation((key: string) =>
+            Promise.resolve(
+              key === LOCAL_KEY_AUTO_TAG_RULES
+                ? { [LOCAL_KEY_AUTO_TAG_RULES]: opts.autoTagRules ?? [] }
+                : { [LOCAL_KEY_FOLDER_RULES]: opts.folderRules ?? [] },
+            ),
+          ),
+        },
+      },
+      bookmarks: {
+        get: vi.fn().mockResolvedValue(opts.node ? [opts.node] : []),
+        update: opts.update ?? vi.fn().mockResolvedValue(undefined),
+        move: opts.move ?? vi.fn().mockResolvedValue(undefined),
+      },
+    })
+  }
+
+  it('adds a matching auto-tag and moves to the matching folder', async () => {
+    const update = vi.fn().mockResolvedValue(undefined)
+    const move = vi.fn().mockResolvedValue(undefined)
+    stubChrome({
+      autoTagRules: [{ id: 'r1', when: 'url-contains', pattern: 'github.com', tags: ['dev'] }],
+      folderRules: [{ id: 'r2', when: 'any-tag-matches', tags: ['dev'], folderId: 'dev-folder' }],
+      node: { id: '1', title: 'X', url: 'https://github.com/x', parentId: 'inbox' },
+      update,
+      move,
+    })
+
+    expect(await applyRulesToBookmark('1')).toEqual({ tags: ['dev'], folderId: 'dev-folder' })
+    expect(update).toHaveBeenCalledWith('1', { title: '[dev] X' })
+    expect(move).toHaveBeenCalledWith('1', { parentId: 'dev-folder' })
+  })
+
+  it('leaves the bookmark untouched when no rule matches', async () => {
+    const update = vi.fn()
+    const move = vi.fn()
+    stubChrome({ node: { id: '1', title: 'X', url: 'https://example.com', parentId: 'inbox' }, update, move })
+
+    expect(await applyRulesToBookmark('1')).toEqual({ tags: [], folderId: 'inbox' })
+    expect(update).not.toHaveBeenCalled()
+    expect(move).not.toHaveBeenCalled()
+  })
+
+  it('returns null when the bookmark no longer exists', async () => {
+    stubChrome({})
+
+    expect(await applyRulesToBookmark('missing')).toBeNull()
   })
 })
 
