@@ -9,8 +9,8 @@ const TRAILING_TAG = /\[([^[\]]+)\]$/
 const TRAILING_NOTE = /\(\(note:\s?([\s\S]*)\)\)$/
 
 export function encodeTitle({ title, tags, note }: DecodedTitle): string {
-  const tagPrefix = tags.map((tag) => `[${tag}]`).join('')
-  let raw = tagPrefix ? `${tagPrefix} ${title}` : title
+  const tagSuffix = tags.map((tag) => `[${tag}]`).join('')
+  let raw = tagSuffix ? `${title} ${tagSuffix}` : title
   if (note !== undefined) raw += ` ((note: ${note}))`
   return raw
 }

@@ -64,8 +64,8 @@ describe('title-codec', () => {
     expect(decoded).toEqual({ title: 'Example ((note: unfinished', tags: [] })
   })
 
-  it('encodes tags in order, each bracket-wrapped, ahead of the title', () => {
-    expect(encodeTitle({ title: 'Example', tags: ['a', 'b'] })).toBe('[a][b] Example')
+  it('encodes tags in order, each bracket-wrapped, after the title', () => {
+    expect(encodeTitle({ title: 'Example', tags: ['a', 'b'] })).toBe('Example [a][b]')
   })
 
   it('encodes a note as a trailing ((note: ...)) suffix', () => {
