@@ -9,6 +9,7 @@ import { AutomationTab } from './AutomationTab'
 import { FindDuplicatesTab } from './FindDuplicatesTab'
 import { FoldersTab } from './FoldersTab'
 import { HowToTab } from './HowToTab'
+import { SettingsTab } from './SettingsTab'
 import { TagsTab } from './TagsTab'
 
 const TABS = [
@@ -17,12 +18,13 @@ const TABS = [
   { id: 'folders', label: 'Folders', Component: FoldersTab },
   { id: 'tags', label: 'Tags', Component: TagsTab },
   { id: 'automation', label: 'Automation', Component: AutomationTab },
+  { id: 'settings', label: 'Settings', Component: SettingsTab },
   { id: 'howto', label: 'How To', Component: HowToTab },
 ] as const
 
 type TabId = (typeof TABS)[number]['id']
 
-const CENTERED_TAB_IDS: TabId[] = ['duplicates', 'tags', 'automation', 'howto']
+const CENTERED_TAB_IDS: TabId[] = ['duplicates', 'tags', 'automation', 'settings', 'howto']
 
 export function Manage() {
   const [tab, setTab] = useState<TabId>('all')
